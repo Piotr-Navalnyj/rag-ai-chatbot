@@ -1,0 +1,8 @@
+streamlit
+openai
+python-dotenv
+supabase
+PyMuPDF
+numpy
+tiktoken
+re
