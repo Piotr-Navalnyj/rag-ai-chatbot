@@ -126,6 +126,7 @@ The LLM evaluation uses expected answers and an LLM judge to determine whether g
 Python · Streamlit · OpenAI API · Supabase · PostgreSQL/pgvector · NumPy · PyMuPDF · Docker
 
 📁 Project Structure
+
 rag-ai-chatbot/
 │
 ├── app.py
@@ -147,6 +148,7 @@ rag-ai-chatbot/
 │   └── supabase_store.py
 │
 └── tests/
+
 ⚙️ Environment Variables
 
 Create a .env file:
