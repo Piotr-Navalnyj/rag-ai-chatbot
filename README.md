@@ -78,6 +78,7 @@ flowchart TD
     AUTH[Supabase Auth] --> UI
 ```
 Deployment architecture
+
                     ┌──────────────────┐
                     │      User        │
                     └────────┬─────────┘
