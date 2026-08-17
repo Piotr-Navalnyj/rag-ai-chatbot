@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client
 
+
 load_dotenv()
 
 
@@ -28,10 +29,6 @@ class Auth:
             key
         )
 
-    # =========================================
-    # RESTORE SESSION
-    # =========================================
-
     def restore_session(
         self,
         access_token,
@@ -43,28 +40,18 @@ class Auth:
             refresh_token
         )
 
-    # =========================================
-    # SIGN UP
-    # =========================================
-
     def sign_up(
         self,
         email,
         password
     ):
 
-        response = self.client.auth.sign_up(
+        return self.client.auth.sign_up(
             {
                 "email": email,
                 "password": password
             }
         )
-
-        return response
-
-    # =========================================
-    # LOGIN
-    # =========================================
 
     def sign_in(
         self,
@@ -72,30 +59,16 @@ class Auth:
         password
     ):
 
-        response = (
-            self.client
-            .auth
-            .sign_in_with_password(
-                {
-                    "email": email,
-                    "password": password
-                }
-            )
+        return self.client.auth.sign_in_with_password(
+            {
+                "email": email,
+                "password": password
+            }
         )
-
-        return response
-
-    # =========================================
-    # LOGOUT
-    # =========================================
 
     def sign_out(self):
 
         self.client.auth.sign_out()
-
-    # =========================================
-    # CURRENT USER
-    # =========================================
 
     def get_user(self):
 

@@ -3,16 +3,14 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from rag.vector_store import VectorStore
+from rag.embeddings import get_embedding
+from rag.supabase_store import SupabaseVectorStore
 from rag.keyword_search import KeywordRetriever
-from rag.rag_pipeline import generate_rag_answer
+from rag.hybrid_search import hybrid_search
 
 
 load_dotenv()
 
-
-INDEX_PATH = "storage/index.faiss"
-CHUNKS_PATH = "storage/chunks.pkl"
 
 TEST_QUESTIONS = [
     {
@@ -65,8 +63,8 @@ TEST_QUESTIONS = [
     }
 ]
 
-PROMPTS = {
 
+PROMPTS = {
     "basic": """
 Answer the question using the provided context.
 """,
@@ -74,8 +72,7 @@ Answer the question using the provided context.
     "grounded": """
 Answer the question using only the provided context.
 
-If the answer is not in the context,
-say "I don't know."
+If the answer is not in the context, say "I don't know."
 
 Do not use outside knowledge.
 """,
@@ -91,8 +88,7 @@ Rules:
 - Prefer exact values and specifications from the context.
 - If the answer cannot be found in the context,
   say "I don't know."
-- Keep the answer concise and directly answer
-  the question.
+- Keep the answer concise and directly answer the question.
 """
 }
 
@@ -127,6 +123,7 @@ Question:
 
     return response.choices[0].message.content
 
+
 def judge_answer(
     client,
     question,
@@ -140,7 +137,6 @@ You are evaluating an answer produced by a RAG chatbot.
 Determine whether the generated answer is factually
 correct compared with the expected answer.
 
-The wording does NOT need to be identical.
 Paraphrases are acceptable.
 
 A response is CORRECT if:
@@ -152,7 +148,8 @@ A response is INCORRECT if:
 - the information is wrong
 - important information is missing
 - it contradicts the expected answer
-- it invents information when the expected answer is "I don't know"
+- it invents information when the expected answer is
+  "I don't know"
 
 Question:
 {question}
@@ -163,15 +160,8 @@ Expected answer:
 Generated answer:
 {answer}
 
-Return ONLY:
-1
-
-if the answer is correct.
-
-Return ONLY:
-0
-
-if the answer is incorrect.
+Return only 1 if correct.
+Return only 0 if incorrect.
 """
 
     response = client.chat.completions.create(
@@ -185,12 +175,63 @@ if the answer is incorrect.
         temperature=0
     )
 
-    result = response.choices[0].message.content.strip()
+    return int(
+        response.choices[0].message.content.strip() == "1"
+    )
 
-    if result == "1":
-        return 1
 
-    return 0
+def evaluate_prompt(
+    client,
+    store,
+    keyword_retriever,
+    prompt
+):
+
+    scores = []
+
+    for test in TEST_QUESTIONS:
+
+        question = test["question"]
+
+        query_vector = get_embedding(
+            client,
+            question
+        )
+
+        results = hybrid_search(
+            query_vector=query_vector,
+            query=question,
+            vector_store=store,
+            keyword_retriever=keyword_retriever,
+            top_k=3
+        )
+
+        context = "\n\n".join(
+            result["chunk"]
+            for result in results
+        )
+
+        answer = generate_answer(
+            client,
+            question,
+            context,
+            prompt
+        )
+
+        score = judge_answer(
+            client,
+            question,
+            test["expected"],
+            answer
+        )
+
+        scores.append(score)
+
+    if not scores:
+        return 0
+
+    return sum(scores) / len(scores)
+
 
 def main():
 
@@ -198,103 +239,25 @@ def main():
         api_key=os.getenv("OPENAI_API_KEY")
     )
 
-    store = VectorStore.load(
-        INDEX_PATH,
-        CHUNKS_PATH
-    )
+    store = SupabaseVectorStore()
 
     keyword_retriever = KeywordRetriever(
-        store.chunks
+        store.get_chunks_for_keyword_search()
     )
-
-    from rag.embeddings import get_embedding
-    from rag.hybrid_search import hybrid_search
 
     for prompt_name, prompt in PROMPTS.items():
 
-        print("\n" + "=" * 70)
-
-        print(
-            f"PROMPT: {prompt_name.upper()}"
+        score = evaluate_prompt(
+            client,
+            store,
+            keyword_retriever,
+            prompt
         )
 
-        print("=" * 70)
-
-        scores = []
-
-        for test in TEST_QUESTIONS:
-
-            question = test["question"]
-
-            # Create query embedding
-            query_vector = get_embedding(
-                client,
-                question
-            )
-
-            # Hybrid retrieval
-            results = hybrid_search(
-                query_vector=query_vector,
-                query=question,
-                vector_store=store,
-                keyword_retriever=keyword_retriever,
-                top_k=3
-            )
-
-            # Build context
-            context = "\n\n".join(
-                result["chunk"]
-                for result in results
-            )
-
-            # Generate answer
-            answer = generate_answer(
-                client,
-                question,
-                context,
-                prompt
-            )
-
-            print("\nQuestion:")
-            print(question)
-
-            print("\nExpected:")
-            print(test["expected"])
-
-            print("\nAnswer:")
-            print(answer)
-
-            score = judge_answer(
-                client,
-                question,
-                test["expected"],
-                answer
-            )
-
-            scores.append(score)
-
-            print(
-                f"Judge score: {score}"
-            )
-            total_score = sum(scores)
-
-            average_score = (
-            total_score / len(scores)
-            )
-
-            print("\n" + "-" * 70)
-
-            print(
-            f"{prompt_name.upper()} SCORE: "
-            f"{total_score}/{len(scores)} "
-            f"({average_score:.2f})"
-            )
-            print(
-                f"Score: {score}"
-            )
-
-            print("-" * 70)
-
+        print(
+            f"{prompt_name}: "
+            f"{score:.2f}"
+        )
 
 
 if __name__ == "__main__":

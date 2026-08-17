@@ -3,44 +3,21 @@ import uuid
 
 class ChatStore:
 
-    def __init__(
-        self,
-        user_id,
-        client
-    ):
-
+    def __init__(self, user_id, client):
         self.user_id = user_id
         self.client = client
 
-    # =========================================
-    # CREATE CHAT
-    # =========================================
+    def create_chat(self, title="New Chat"):
 
-    def create_chat(
-        self,
-        title="New Chat"
-    ):
+        chat_id = str(uuid.uuid4())
 
-        chat_id = str(
-            uuid.uuid4()
-        )
-
-        response = (
-            self.client
-            .table("chats")
-            .insert({
-                "id": chat_id,
-                "user_id": self.user_id,
-                "title": title
-            })
-            .execute()
-        )
+        self.client.table("chats").insert({
+            "id": chat_id,
+            "user_id": self.user_id,
+            "title": title
+        }).execute()
 
         return chat_id
-
-    # =========================================
-    # GET USER CHATS
-    # =========================================
 
     def get_chats(self):
 
@@ -48,47 +25,25 @@ class ChatStore:
             self.client
             .table("chats")
             .select("*")
-            .eq(
-                "user_id",
-                self.user_id
-            )
-            .order(
-                "updated_at",
-                desc=True
-            )
+            .eq("user_id", self.user_id)
+            .order("updated_at", desc=True)
             .execute()
         )
 
         return response.data
 
-    # =========================================
-    # GET MESSAGES
-    # =========================================
-
-    def get_messages(
-        self,
-        chat_id
-    ):
-
-        # Make sure chat belongs to user
+    def get_messages(self, chat_id):
 
         chat = (
             self.client
             .table("chats")
             .select("id")
-            .eq(
-                "id",
-                chat_id
-            )
-            .eq(
-                "user_id",
-                self.user_id
-            )
+            .eq("id", chat_id)
+            .eq("user_id", self.user_id)
             .execute()
         )
 
         if not chat.data:
-
             raise PermissionError(
                 "Chat does not belong to this user."
             )
@@ -96,96 +51,46 @@ class ChatStore:
         response = (
             self.client
             .table("messages")
-            .select(
-                "role, content"
-            )
-            .eq(
-                "chat_id",
-                chat_id
-            )
-            .order(
-                "created_at"
-            )
+            .select("role, content")
+            .eq("chat_id", chat_id)
+            .order("created_at")
             .execute()
         )
 
         return response.data
 
-    # =========================================
-    # ADD MESSAGE
-    # =========================================
-
-    def add_message(
-        self,
-        chat_id,
-        role,
-        content
-    ):
-
-        # Verify ownership
+    def add_message(self, chat_id, role, content):
 
         chat = (
             self.client
             .table("chats")
             .select("id")
-            .eq(
-                "id",
-                chat_id
-            )
-            .eq(
-                "user_id",
-                self.user_id
-            )
+            .eq("id", chat_id)
+            .eq("user_id", self.user_id)
             .execute()
         )
 
         if not chat.data:
-
             raise PermissionError(
                 "Chat does not belong to this user."
             )
 
-        # Add message
-
-        (
-            self.client
-            .table("messages")
-            .insert({
-                "chat_id": chat_id,
-                "role": role,
-                "content": content
-            })
-            .execute()
-        )
-
-        # Update chat timestamp
+        self.client.table("messages").insert({
+            "chat_id": chat_id,
+            "role": role,
+            "content": content
+        }).execute()
 
         (
             self.client
             .table("chats")
-            .update({
-                "updated_at": "now()"
-            })
-            .eq(
-                "id",
-                chat_id
-            )
-            .eq(
-                "user_id",
-                self.user_id
-            )
+            .update({"updated_at": "now()"})
+            .eq("id", chat_id)
+            .eq("user_id", self.user_id)
             .execute()
         )
 
-    # =========================================
-    # UPDATE TITLE
-    # =========================================
-
-    def update_title(
-        self,
-        chat_id,
-        title
-    ):
+    def update_title(self, chat_id, title):
 
         (
             self.client
@@ -194,37 +99,18 @@ class ChatStore:
                 "title": title,
                 "updated_at": "now()"
             })
-            .eq(
-                "id",
-                chat_id
-            )
-            .eq(
-                "user_id",
-                self.user_id
-            )
+            .eq("id", chat_id)
+            .eq("user_id", self.user_id)
             .execute()
         )
 
-    # =========================================
-    # DELETE CHAT
-    # =========================================
-
-    def delete_chat(
-        self,
-        chat_id
-    ):
+    def delete_chat(self, chat_id):
 
         (
             self.client
             .table("chats")
             .delete()
-            .eq(
-                "id",
-                chat_id
-            )
-            .eq(
-                "user_id",
-                self.user_id
-            )
+            .eq("id", chat_id)
+            .eq("user_id", self.user_id)
             .execute()
         )
