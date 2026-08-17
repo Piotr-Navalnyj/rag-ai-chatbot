@@ -125,8 +125,9 @@ The LLM evaluation uses expected answers and an LLM judge to determine whether g
 
 Python · Streamlit · OpenAI API · Supabase · PostgreSQL/pgvector · NumPy · PyMuPDF · Docker
 
-📁 Project Structure
+## 📁 Project Structure
 
+```text
 rag-ai-chatbot/
 │
 ├── app.py
@@ -135,7 +136,9 @@ rag-ai-chatbot/
 ├── prompts.py
 ├── config.py
 ├── Dockerfile
+├── .dockerignore
 ├── requirements.txt
+├── README.md
 │
 ├── rag/
 │   ├── auth.py
@@ -145,9 +148,14 @@ rag-ai-chatbot/
 │   ├── hybrid_search.py
 │   ├── keyword_search.py
 │   ├── pipeline.py
-│   └── supabase_store.py
+│   ├── supabase_store.py
+│   │
+│   └── evaluation/
+│       ├── evaluate_llm.py
+│       └── evaluate_retrieval.py
 │
-└── tests/
+└── tests/...
+```
 
 ⚙️ Environment Variables
 
