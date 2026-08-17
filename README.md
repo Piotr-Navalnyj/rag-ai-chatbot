@@ -30,83 +30,45 @@ The system retrieves relevant document chunks using both **vector search and key
 ## 🏗️ Architecture
 
 ```mermaid
-flowchart TD
+flowchart LR
 
-    %% =========================
-    %% DOCUMENT INGESTION
-    %% =========================
+    %% INGESTION
+    PDF[PDF] --> EXTRACT[Extract Text]
+    EXTRACT --> CHUNK[Chunk Documents]
+    CHUNK --> EMBED[OpenAI Embeddings]
+    EMBED --> DB[(Supabase<br/>pgvector)]
 
-    PDF[PDF Upload] --> EX[Text Extraction<br/>PyMuPDF]
-    EX --> CH[Chunking<br/>200 tokens / 50 overlap]
-    CH --> EMB[OpenAI Embeddings]
+    %% QUERY
+    USER[User] --> APP[Streamlit App]
+    APP --> QUERY[Question]
 
-    CH --> DOC[Document Metadata]
-    EMB --> DB[Supabase<br/>Documents + Chunks + Embeddings]
-    DOC --> DB
+    QUERY --> VECTOR[Vector Search]
+    QUERY --> KEYWORD[Keyword Search]
 
+    DB --> VECTOR
+    DB --> CHUNKS[Stored Chunks]
+    CHUNKS --> KEYWORD
 
-    %% =========================
-    %% AUTHENTICATION
-    %% =========================
+    VECTOR --> HYBRID[Hybrid Retrieval]
+    KEYWORD --> HYBRID
 
-    USER[User] --> AUTH[Supabase Auth]
-    AUTH --> UI[Streamlit Application]
+    HYBRID --> TOPK[Top 3 Chunks]
 
-
-    %% =========================
-    %% QUERY / RETRIEVAL
-    %% =========================
-
-    UI --> Q[User Question]
-
-    Q --> QE[OpenAI Query Embedding]
-
-    QE --> VS[Vector Search<br/>Supabase pgvector]
-
-    Q --> KS[Keyword Search<br/>KeywordRetriever]
-
-    DB --> VS
-    DB --> KC[Document Chunks]
-    KC --> KS
-
-    VS --> HY[Hybrid Search]
-    KS --> HY
-
-    HY --> SCORE[Weighted Score Combination]
-
-    SCORE --> TOP[Top-K Results<br/>K = 3]
-
-
-    %% =========================
     %% GENERATION
-    %% =========================
-
-    TOP --> CTX[Documentation Context]
-
-    CTX --> PROMPT[Prompt Builder]
-    Q --> PROMPT
-
+    TOPK --> PROMPT[Context + Question]
     PROMPT --> LLM[GPT-4.1-mini]
+    LLM --> ANSWER[Answer]
 
-    LLM --> ANSWER[Generated Answer]
+    %% UI
+    ANSWER --> APP
+    TOPK --> SOURCES[Sources]
+    SOURCES --> APP
 
+    %% STORAGE
+    APP --> CHAT[(Supabase<br/>Chat History)]
 
-    %% =========================
-    %% RESPONSE
-    %% =========================
-
-    ANSWER --> UI
-
-    TOP --> SOURCES[Retrieved Sources<br/>Chunks + Scores]
-    SOURCES --> UI
-
-
-    %% =========================
-    %% CHAT STORAGE
-    %% =========================
-
-    UI --> CHAT[Supabase Chat Store]
-    CHAT --> HISTORY[Chat History]
+    %% AUTH
+    APP --> AUTH[Supabase Auth]
 ```
 Deployment architecture
 
