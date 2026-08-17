@@ -29,108 +29,52 @@ The system retrieves relevant document chunks using both **vector search and key
 
 ## 🏗️ Architecture
 
-                         ┌─────────────────────┐
-                         │      PDF Upload     │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │   Text Extraction   │
-                         │      PyMuPDF        │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │      Chunking       │
-                         │   200 tokens/chunk  │
-                         │     50 overlap      │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │ OpenAI Embeddings   │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                 ┌──────────────────────────────────┐
-                 │       Supabase / pgvector        │
-                 │                                  │
-                 │  Documents + Chunks + Embeddings │
-                 └────────────────┬─────────────────┘
-                                  │
-                                  │
-                 ┌────────────────┴────────────────┐
-                 │                                 │
-                 ▼                                 ▼
-        ┌─────────────────┐              ┌─────────────────┐
-        │  User Question  │              │  Chat History   │
-        └────────┬────────┘              └────────┬────────┘
-                 │                                │
-                 ▼                                │
-        ┌─────────────────┐                       │
-        │ Query Embedding │                       │
-        └────────┬────────┘                       │
-                 │                                │
-          ┌──────┴──────┐                         │
-          │             │                         │
-          ▼             ▼                         │
- ┌────────────────┐ ┌────────────────┐            │
- │ Vector Search  │ │ Keyword Search │            │
- │   pgvector     │ │  TF-IDF/BM25   │            │
- └───────┬────────┘ └───────┬────────┘            │
-         │                  │                     │
-         └────────┬─────────┘                     │
-                  ▼                               │
-        ┌─────────────────────┐                   │
-        │   Hybrid Retrieval  │                   │
-        │                     │                   │
-        │ Vector + Keyword    │                   │
-        │ Weighted Scores     │                   │
-        └──────────┬──────────┘                   │
-                   │                              │
-                   ▼                              │
-        ┌─────────────────────┐                   │
-        │   Top-K Chunks      │                   │
-        │      (K = 3)        │                   │
-        └──────────┬──────────┘                   │
-                   │                              │
-                   ├──────────────────────────────┤
-                   │                              │
-                   ▼                              ▼
-        ┌─────────────────────┐        ┌─────────────────────┐
-        │ Documentation       │        │ Conversation        │
-        │ Context             │        │ Context / Memory    │
-        └──────────┬──────────┘        └──────────┬──────────┘
-                   │                              │
-                   └──────────────┬───────────────┘
-                                  ▼
-                       ┌─────────────────────┐
-                       │    Prompt Builder   │
-                       └──────────┬──────────┘
-                                  │
-                                  ▼
-                       ┌─────────────────────┐
-                       │    GPT-4.1-mini     │
-                       │     Generation      │
-                       └──────────┬──────────┘
-                                  │
-                                  ▼
-                       ┌─────────────────────┐
-                       │       Answer        │
-                       └──────────┬──────────┘
-                                  │
-                    ┌─────────────┴─────────────┐
-                    ▼                           ▼
-          ┌─────────────────┐        ┌──────────────────┐
-          │  Streamlit UI   │        │  Source Chunks   │
-          │     Response    │        │   + Scores       │
-          └────────┬────────┘        └──────────────────┘
-                   │
-                   ▼
-          ┌─────────────────┐
-          │ Supabase Chat   │
-          │    History     │
-          └─────────────────┘
+               flowchart TD
+
+    %% DOCUMENT INGESTION
+
+    PDF[PDF Document] --> EX[Text Extraction<br/>PyMuPDF]
+    EX --> CH[Chunking<br/>200 tokens / 50 overlap]
+    CH --> EMB[OpenAI Embeddings]
+    EMB --> DB[Supabase<br/>pgvector]
+
+    %% USER QUERY
+
+    U[User Question] --> QE[Query Embedding]
+
+    QE --> VS[Vector Search<br/>pgvector]
+    U --> KS[Keyword Search<br/>TF-IDF]
+
+    DB --> VS
+
+    VS --> HY[Hybrid Retrieval]
+    KS --> HY
+
+    HY --> TK[Top-K Chunks<br/>K = 3]
+
+    %% CONTEXT
+
+    TK --> DC[Documentation Context]
+
+    HIST[Conversation History<br/>+ Memory] --> PB[Prompt Builder]
+    DC --> PB
+
+    PB --> LLM[GPT-4.1-mini]
+
+    %% RESPONSE
+
+    LLM --> ANS[Generated Answer]
+
+    ANS --> UI[Streamlit UI]
+
+    TK --> SRC[Retrieved Sources<br/>+ Scores]
+    SRC --> UI
+
+    UI --> CHAT[Supabase<br/>Chat History]
+
+    %% AUTH
+
+    AUTH[Supabase Auth] --> UI
 
 Deployment architecture
 
