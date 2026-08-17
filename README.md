@@ -32,50 +32,81 @@ The system retrieves relevant document chunks using both **vector search and key
 ```mermaid
 flowchart TD
 
+    %% =========================
     %% DOCUMENT INGESTION
+    %% =========================
 
-    PDF[PDF Document] --> EX[Text Extraction<br/>PyMuPDF]
+    PDF[PDF Upload] --> EX[Text Extraction<br/>PyMuPDF]
     EX --> CH[Chunking<br/>200 tokens / 50 overlap]
     CH --> EMB[OpenAI Embeddings]
-    EMB --> DB[Supabase<br/>pgvector]
 
-    %% USER QUERY
+    CH --> DOC[Document Metadata]
+    EMB --> DB[Supabase<br/>Documents + Chunks + Embeddings]
+    DOC --> DB
 
-    U[User Question] --> QE[Query Embedding]
 
-    QE --> VS[Vector Search<br/>pgvector]
-    U --> KS[Keyword Search<br/>TF-IDF]
+    %% =========================
+    %% AUTHENTICATION
+    %% =========================
+
+    USER[User] --> AUTH[Supabase Auth]
+    AUTH --> UI[Streamlit Application]
+
+
+    %% =========================
+    %% QUERY / RETRIEVAL
+    %% =========================
+
+    UI --> Q[User Question]
+
+    Q --> QE[OpenAI Query Embedding]
+
+    QE --> VS[Vector Search<br/>Supabase pgvector]
+
+    Q --> KS[Keyword Search<br/>KeywordRetriever]
 
     DB --> VS
+    DB --> KC[Document Chunks]
+    KC --> KS
 
-    VS --> HY[Hybrid Retrieval]
+    VS --> HY[Hybrid Search]
     KS --> HY
 
-    HY --> TK[Top-K Chunks<br/>K = 3]
+    HY --> SCORE[Weighted Score Combination]
 
-    %% CONTEXT
+    SCORE --> TOP[Top-K Results<br/>K = 3]
 
-    TK --> DC[Documentation Context]
 
-    HIST[Conversation History<br/>+ Memory] --> PB[Prompt Builder]
-    DC --> PB
+    %% =========================
+    %% GENERATION
+    %% =========================
 
-    PB --> LLM[GPT-4.1-mini]
+    TOP --> CTX[Documentation Context]
 
+    CTX --> PROMPT[Prompt Builder]
+    Q --> PROMPT
+
+    PROMPT --> LLM[GPT-4.1-mini]
+
+    LLM --> ANSWER[Generated Answer]
+
+
+    %% =========================
     %% RESPONSE
+    %% =========================
 
-    LLM --> ANS[Generated Answer]
+    ANSWER --> UI
 
-    ANS --> UI[Streamlit UI]
+    TOP --> SOURCES[Retrieved Sources<br/>Chunks + Scores]
+    SOURCES --> UI
 
-    TK --> SRC[Retrieved Sources<br/>+ Scores]
-    SRC --> UI
 
-    UI --> CHAT[Supabase<br/>Chat History]
+    %% =========================
+    %% CHAT STORAGE
+    %% =========================
 
-    %% AUTH
-
-    AUTH[Supabase Auth] --> UI
+    UI --> CHAT[Supabase Chat Store]
+    CHAT --> HISTORY[Chat History]
 ```
 Deployment architecture
 
