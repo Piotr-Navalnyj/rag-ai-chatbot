@@ -27,8 +27,10 @@ The system retrieves relevant document chunks using both **vector search and key
 - 🐳 Dockerized application
 - ☁️ Deployed Streamlit application
 
+````markdown
 ## 🏗️ Architecture
 
+```mermaid
                flowchart TD
 
     %% DOCUMENT INGESTION
