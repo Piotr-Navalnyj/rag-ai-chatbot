@@ -27,11 +27,10 @@ The system retrieves relevant document chunks using both **vector search and key
 - 🐳 Dockerized application
 - ☁️ Deployed Streamlit application
 
-````markdown
 ## 🏗️ Architecture
 
 ```mermaid
-               flowchart TD
+flowchart TD
 
     %% DOCUMENT INGESTION
 
@@ -77,8 +76,7 @@ The system retrieves relevant document chunks using both **vector search and key
     %% AUTH
 
     AUTH[Supabase Auth] --> UI
-
-Deployment architecture
+```
 
                     ┌──────────────────┐
                     │      User        │
